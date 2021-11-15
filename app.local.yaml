@@ -1,0 +1,61 @@
+global:                             #全局配置
+  namespace: Development            #环境类型，分正式production和非正式development两种类型
+  env_name: local                    #环境名称，非正式环境下多环境的名称
+
+server:                                            #服务端配置
+  app: goProjectTmpl                                        #业务的应用名
+  server: goprojecttmpl                             #进程服务名
+  bin_path: /usr/local/app/bin/                   #二进制可执行文件和框架配置文件所在路径
+  conf_path: /usr/local/app/conf/                 #业务配置文件所在路径
+  data_path: /usr/local/app/data/                 #业务数据文件所在路径
+  filter:                                          #针对所有service处理函数前后的拦截器列表
+    - recovery                                     #拦截框架创建的业务处理协程panic
+    - validation
+  admin:                                           #管理服务配置，可以用于开启并查看服务profile信息，以及查看服务的一些配置等
+    ip: 127.0.0.1                                #要绑定的网卡地址 ${local_ip}
+    port: 17711                                     #管理服务监听端口；默认为9028
+    read_timeout: 3000                             #ms. 请求读取超时时间
+    write_timeout: 60000                           #ms. 处理超时时间，注意：如果要使用profile采样，超时时间需大于采样时间
+    enable_tls: false                              #是否启用tls; 暂未支持，填false
+  service:                                         #业务服务提供的service，可以有多个
+    - name: framework.company.service.App      #service的路由名称
+      ip: 0.0.0.0                           #服务监听ip地址 可使用占位符 ${ip},ip和nic二选一，优先ip
+      #nic: eth0
+      port: 17710                #服务监听端口 可使用占位符 ${port}
+      network: tcp                             #网络监听类型  tcp udp
+      protocol: http               #应用层协议 rpc http
+      timeout: 1000                            #请求最长处理时间 单位 毫秒
+
+client:                                            #客户端调用的后端配置
+  timeout: 1000                                    #针对所有后端的请求最长处理时间
+  namespace: Development                           #针对所有后端的环境
+  filter:                                          #针对所有后端调用函数前后的拦截器列表
+  service:                                         #针对单个后端的配置
+    - name: app.mysql.business.config
+      target: dsn://root:pwd@xxxx@tcp(localhost:3306)/app?timeout=1s
+    - name: app.redis.business.master
+      namespace: Development
+      network: tcp
+      protocol: redis
+      target: ip://127.0.0.1:6380
+      password: "pwd"
+      timeout: 1000
+
+plugins:                                          #插件配置 (由插件自己负责解析)
+  log:                                            #日志配置
+    default:                                      #默认日志的配置，可支持多输出
+      - writer: console                           #控制台标准输出 默认
+        level: debug                              #标准输出日志的级别
+      - writer: file                              #本地文件日志
+        level: debug                               #本地文件滚动日志的级别
+        writer_config:
+          filename: ../log/app.log                      #本地文件滚动日志存放的路径
+          max_size: 10                              #本地文件滚动日志的大小 单位 MB
+          max_backups: 10                           #最大日志文件数
+          max_age: 7                                #最大日志保留天数
+          compress:  false                          #日志文件是否压缩
+  database:
+    mysql:
+      max_idle: 20  # 最大空闲连接数
+      max_open: 100 # 最大在线连接数
+      max_lifetime: 180000 # 连接最大生命周期(单位：毫秒)     建议为 server端的超时时间 / 2 - 1s
